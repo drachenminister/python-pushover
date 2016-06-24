@@ -129,12 +129,11 @@ class MessageRequest(Request):
         self.receipt = None
         if payload.get("priority", 0) == 2:
             self.receipt = self.answer["receipt"]
-        self.parameters = {"expired": "expires_at",
-                           "called_back": "called_back_at",
-                           "acknowledged": "acknowledged_at"}
-        for param, when in self.parameters.iteritems():
-            setattr(self, param, False)
-            setattr(self, when, 0)
+        self.parameters = ("expired", "called_back", "acknowledged", "expires_at", 
+            "last_delivered_at", "called_back_at", "acknowledged_by_device",
+            "acknowledged_by", "acknowledged_at")
+        for param in self.parameter:
+            setattr(self, param, 0)
 
     def poll(self):
         """If the message request has a priority of 2, Pushover will keep
@@ -155,13 +154,32 @@ class MessageRequest(Request):
                 # do something
                 time.sleep(5)
         """
-        if (self.receipt and not any(getattr(self, parameter)
-                                     for parameter in self.parameters)):
+        if (self.receipt):
             request = Request("get", RECEIPT_URL + self.receipt + ".json", {})
-            for param, when in self.parameters.iteritems():
-                setattr(self, param, bool(request.answer[param]))
-                setattr(self, when, request.answer[when])
+            for param in self.parameters:
+                setattr(self, param, request.answer[param])
+            if any(getattr(self, parameter) for parameter in self.parameters[:3]): return None
             return request
+            
+    def has_expired(self):
+        self.poll()
+        return bool(self.expired)
+        
+    def was_called_back(self):
+        self.poll()
+        return bool(self.called_back)
+        
+    def was_acknowledged(self):
+        self.poll()
+        return bool(self.acknowledged)
+        
+    def has_ended(self):
+        self.poll()
+        return any(getattr(self, parameter) for parameter in self.parameters[:3])
+        
+    def cancel(self):
+        if (self.receipt):
+            request = Request("get", RECEIPT_URL + self.receipt + "/cancel.json", {})
 
 
 class Client:
