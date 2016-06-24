@@ -132,7 +132,7 @@ class MessageRequest(Request):
         self.parameters = ("expired", "called_back", "acknowledged", "expires_at", 
             "last_delivered_at", "called_back_at", "acknowledged_by_device",
             "acknowledged_by", "acknowledged_at")
-        for param in self.parameter:
+        for param in self.parameters:
             setattr(self, param, 0)
 
     def poll(self):
